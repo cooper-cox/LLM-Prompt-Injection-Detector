@@ -1,6 +1,7 @@
 import pandas as pd
 import langid
 from sklearn.model_selection import train_test_split
+import logging
 
 def is_english(text):
     lang, score = langid.classify(text)
@@ -73,17 +74,24 @@ def load_bigjay():
 
     return cleaned_df, cleaned_test_df
 
-def main():
+def create_dataset():
+    logger = logging.getLogger(__name__)
+
+    # load
+    logger.info("Loading datasets")
     qual = load_qualifire()
-    
     safejay_train, safejay_test_benign = load_safejay()
-   
     bigjay_train, bigjay_test = load_bigjay()
  
+    # merge and clean
+    logger.info("Merging into a single dataset and cleaning")
     merged_df = pd.concat([qual, safejay_train, safejay_test_benign, bigjay_train, bigjay_test], ignore_index=True)
-
     merged_df = merged_df.drop_duplicates(subset="prompt", keep="first")
+    merged_df["prompt"] = merged_df["prompt"].fillna("").astype(str)
+    merged_df = merged_df[merged_df["prompt"].str.strip() != ""]
 
+    # split dataset
+    logger.info("Splitting into train/dev/test")
     test_df = merged_df[merged_df["split"] == "test"]
     
     dev_df, test_df = train_test_split(
@@ -98,7 +106,5 @@ def main():
 
     merged_df = pd.concat([train_df, dev_df, test_df]).reset_index(drop=True)
 
-    merged_df.to_csv("dataset.csv", index=False)
-
-if __name__ == "__main__":
-    main()
+    logger.info("Saving dataset to dataset dir")
+    merged_df.to_csv("data/dataset/dataset.csv", index=False)

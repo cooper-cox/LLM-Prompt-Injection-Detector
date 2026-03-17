@@ -8,6 +8,8 @@ import logging
 import numpy as np
 from sklearn.metrics import confusion_matrix
 import wandb
+from torch.utils.data import Subset
+import os
 
 def evaluate_model(model, dataloader, device, config):
 
@@ -52,12 +54,21 @@ def train(config):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if config.use_wandb:
+    if config.use_wandb or "WANDB_RUN_ID" in os.environ:
         logger.info("Initializing Wandb")
         wandb.init(
             project="prompt-injection-detector",
             config=vars(config)
         )
+
+        config.use_wandb = True
+
+        if "lr" in wandb.config:
+            config.lr = wandb.config.lr
+            config.batch = wandb.config.batch
+            config.epoch = wandb.config.epoch
+            config.threshold = wandb.config.threshold
+            config.seq_length = wandb.config.seq_length
 
     is_sweep = config.use_wandb and wandb.run is not None and wandb.run.sweep_id is not None
 
@@ -68,39 +79,25 @@ def train(config):
     elif config.model == "bert-large":
         tokenizer = AutoTokenizer.from_pretrained("bert-large-uncased")
 
-    breakpoint()
-   
     # LOAD DATASETS AND DATALOADERS
     logger.info("Loading train and eval datasets/dataloaders")
     train_dataset = PromptDataset("train", config, tokenizer)
-    train_loader = DataLoader(train_dataset, batch_size=config.batch, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=config.batch, shuffle=True, num_workers=4, persistent_workers=True)
    
-    breakpoint()
-
     if config.test:
         eval_dataset = PromptDataset("test", config, tokenizer)
     else:
         eval_dataset = PromptDataset("dev", config, tokenizer)
     
-    eval_loader = DataLoader(eval_dataset, batch_size=config.batch, shuffle=False)
-
-    
-    breakpoint()
+    eval_loader = DataLoader(eval_dataset, batch_size=config.batch, shuffle=False, num_workers=4, persistent_workers=True)
 
     model = PromptClassifier(config).to(device)
-
-    breakpoint()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
 
     criterion = nn.BCELoss()
 
-    # TODO: Fix train loop, get accuracy/evaluation metric, save model weights 
-
     model.train()
-
-
-    breakpoint()
 
     # TRAIN LOOP
     logger.info("Beginning train loop")
@@ -133,7 +130,15 @@ def train(config):
         # EVALUATE
         logger.info("Evaluating on TRAIN set")
 
-        train_acc, train_prec, train_rec, train_f1 = evaluate_model(model, train_loader, device, config)
+        subset_size = 5000
+        subset_indices = np.random.choice(len(train_dataset), subset_size, replace=False)
+        train_subset = Subset(train_dataset, subset_indices)
+        train_loader_subset = DataLoader(train_subset, batch_size=config.batch, shuffle=False, num_workers=4, persistent_workers=True)
+
+        train_acc, train_prec, train_rec, train_f1 = evaluate_model(model, train_loader_subset, device, config)
+
+
+        #train_acc, train_prec, train_rec, train_f1 = evaluate_model(model, train_loader, device, config)
 
         if config.use_wandb:
             wandb.log({
@@ -147,7 +152,7 @@ def train(config):
         logger.info(f"TRAIN acc:{train_acc} prec:{train_prec} rec:{train_rec} f1:{train_f1}")
 
         # DEV/TEST
-        if (epoch + 1) % 5 == 0:
+        if (epoch + 1) % 1 == 0:
             
             logger.info("Evaluating on EVAL set")
             
@@ -162,9 +167,6 @@ def train(config):
                 })
 
             logger.info(f"EVAL acc:{eval_acc} prec:{eval_prec} rec:{eval_rec} f1:{eval_f1}")
-
-
-    breakpoint()
 
     # SAVE MODEL (skip during sweeps)
     if not is_sweep:

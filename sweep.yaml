@@ -1,28 +1,36 @@
+program: main.py
+
 method: bayes
 
 metric:
-  name: eval_acc
+  name: eval_accuracy
   goal: maximize
 
+command:
+  - ${env}
+  - python
+  - main.py
+  - ${args}
+
 parameters:
+  model:
+    value: bert
+
   lr:
     values:
-      - 0.01
-      - 0.005
-      - 0.001
       - 0.0005
       - 0.0001
       - 0.00005
       - 0.00001
   
   batch:
-    values: [8, 16, 32]
+    values: [32]
 
   epoch:
-    values: [10, 30, 50]
+    values: [10]
 
   threshold:
-    values: [0.3, 0.4, 0.5, 0.6, 0.7]
+    values: [0.25, 0.5, 0.75]
 
   seq_length:
     values: [32, 64, 128, 256]

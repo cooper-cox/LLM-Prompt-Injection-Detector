@@ -1,4 +1,5 @@
 import pandas as pd
+import torch
 from torch.utils.data import Dataset
 
 """
@@ -7,14 +8,31 @@ from torch.utils.data import Dataset
 """
 class PromptDataset(Dataset):
 
-    def __init__(self, dataset_csv, split):
-        df = pd.read_csv(dataset_csv, keep_default_na=False)
-        self.data = df[df["split"] == split]
-        self.prompts = self.data["prompt"]
-        self.targets = self.data["target"]
+    def __init__(self, split, config, tokenizer=None):
+        df = pd.read_csv(config.data_path, keep_default_na=False)
+        self.data = df[df["split"] == split].reset_index(drop=True)
+        self.prompts = self.data["prompt"].tolist()
+        self.targets = self.data["target"].tolist()
+        self.model = config.model
+
+        if tokenizer:
+            self.encodings = tokenizer(
+                self.prompts,
+                padding=True,
+                truncation=True,
+                max_length=config.seq_length,
+                return_tensors="pt"
+            )
 
     def __len__(self):
-        return len(self.data)
+        return len(self.targets)
 
     def __getitem__(self, idx):
-        return (self.prompts[idx], self.targets[idx])
+        if self.model == "logreg":
+            return (self.prompts[idx], self.targets[idx])
+        else:
+            item = {key: val[idx] for key, val in self.encodings.items()}
+            item["labels"] = torch.tensor(self.targets[idx], dtype=torch.float)
+
+            # dict with keys: input_ids, attention_mask, labels
+            return item

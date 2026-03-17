@@ -17,19 +17,19 @@ def evaluate(model, x, y, config):
     precision = tp / (tp + fp)
     f1 = (2 * precision * recall) / (precision + recall)
 
-    return acc, precision, recall, f1
+    return round(acc, 3), round(precision, 3), round(recall, 3), round(f1, 3)
 
-def train(args):
+def train(config):
     logger = logging.getLogger(__name__)
 
     logger.info("Loading train and eval datasets")
     
     # load data from dataset
-    train_dataset = PromptDataset(args.data_path, "train")
-    if args.test:
-        eval_dataset = PromptDataset(args.data_path, "test")
+    train_dataset = PromptDataset("train", config)
+    if config.test:
+        eval_dataset = PromptDataset("test", config)
     else:
-        eval_dataset = PromptDataset(args.data_path, "dev")
+        eval_dataset = PromptDataset("dev", config)
 
     # Use term frequency to transform prompts to TF-IDF
 
@@ -58,18 +58,18 @@ def train(args):
     model.fit(x_train, y_train)
 
     logger.info("Evaluating model performance")
-    train_acc, train_precision, train_recall, train_f1 = evaluate(model, x_train, y_train, args)
-    eval_acc, eval_precision, eval_recall, eval_f1 = evaluate(model, x_eval, y_eval, args)
+    train_acc, train_precision, train_recall, train_f1 = evaluate(model, x_train, y_train, config)
+    eval_acc, eval_precision, eval_recall, eval_f1 = evaluate(model, x_eval, y_eval, config)
     logger.info(f"TRAIN ACC: {train_acc}")
     logger.info(f"TRAIN PRECISION: {train_precision}")
     logger.info(f"TRAIN RECALL: {train_recall}")
     logger.info(f"TRAIN F1: {train_f1}")
-    logger.info(f"{'TEST' if args.test else 'DEV'} ACC: {eval_acc}")
-    logger.info(f"{'TEST' if args.test else 'DEV'} PRECISION: {eval_precision}")
-    logger.info(f"{'TEST' if args.test else 'DEV'} RECALL: {eval_recall}")
-    logger.info(f"{'TEST' if args.test else 'DEV'} F1: {eval_f1}")
+    logger.info(f"{'TEST' if config.test else 'DEV'} ACC: {eval_acc}")
+    logger.info(f"{'TEST' if config.test else 'DEV'} PRECISION: {eval_precision}")
+    logger.info(f"{'TEST' if config.test else 'DEV'} RECALL: {eval_recall}")
+    logger.info(f"{'TEST' if config.test else 'DEV'} F1: {eval_f1}")
 
-    args.save_path.mkdir(parents=True, exist_ok=True)
+    config.save_path.mkdir(parents=True, exist_ok=True)
     logger.info("Saving model weights and TF-IDF vectorizer")
-    joblib.dump(vectorizer, f"{args.save_path}/tfidf.pkl")
-    joblib.dump(model, f"{args.save_path}/model.pkl")
+    joblib.dump(vectorizer, f"{config.save_path}/tfidf.pkl")
+    joblib.dump(model, f"{config.save_path}/model.pkl")

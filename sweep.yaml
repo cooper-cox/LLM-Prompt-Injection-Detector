@@ -18,10 +18,10 @@ parameters:
 
   lr:
     values:
-      - 0.0005
-      - 0.0001
       - 0.00005
       - 0.00001
+      - 0.000005
+      - 0.000001
   
   batch:
     values: [32]
@@ -33,4 +33,4 @@ parameters:
     values: [0.25, 0.5, 0.75]
 
   seq_length:
-    values: [32, 64, 128, 256]
+    values: [64, 128, 256]

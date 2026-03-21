@@ -99,6 +99,8 @@ def train(config):
 
     model.train()
 
+    logger.info(f"{config.model} param -- batch: {config.batch} lr: {config.lr} seq_len: {config.seq_length} epochs: {config.epoch} threshold: {config.threshold}")
+
     # TRAIN LOOP
     logger.info("Beginning train loop")
     for epoch in range(config.epoch):

@@ -16,8 +16,6 @@ Large Language Models (LLMs) have recently been at the forefront of technologica
 
 ## File Structure
 
-## File Structure
-
 ```
 LLM-Prompt-Injection-Detector/
 ├── data/                       # Data loading, curation, and dataset utilities
